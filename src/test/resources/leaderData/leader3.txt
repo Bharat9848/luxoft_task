@@ -1,0 +1,5 @@
+sensor-id,humidity
+s4,80
+s5,NaN
+s6,78
+s7,98
