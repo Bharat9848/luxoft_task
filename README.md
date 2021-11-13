@@ -8,13 +8,13 @@ Program is using Akka-Stream scala library to solve the problem. To solve the pr
 
 ## How to run program
 
-Program is using sbt built tool. Sbt build tool is required to run the program. After sbt setup, program can be run using following command after opening program's base directory in a command prompt.
+Program is using sbt built tool. It is required to run the program. After setting up sbt, program can be run using following commands from program's base directory in a command prompt.
 ```
 sbt
 runMain SensorDataProcess 
 ``` 
 #### Program behavior
-After running the above commands, program will prompt for data directory as required in problem statement. After taking input data directory program will output the data report result as per the problem statement 's output format and then exit.
+After running the above commands, program will prompt for data directory as required in the problem statement.Then Program will process the input data directory and output the data report result as per the problem statement's output format and exit.
 #### Run program against test sample 
 To run the program against sample data files, use the following commands
 ```
@@ -27,7 +27,7 @@ Enter sensor data directory
 ...
 ```
 
-##Project structure and classes overview 
+## Project structure and classes overview 
 Directory structure is according to sbt project convention. Following list the source files and small overview about them 
 
  - src/main/scala
