@@ -1,12 +1,13 @@
+import domain.{HumidityInvalid, HumidityValid, SensorDataMetrics, SensoryDataCollector}
 import org.junit.{Assert, Test}
+import report.ReportGenerator
 
 class ReportGeneratorSpec {
 
   @Test
   def testReportFormatWithoutData() = {
 
-    val collector = new SensoryDataCollector
-    val generator = new ReportGenerator(collector)
+    val generator = new ReportGenerator(0, List())
     val expected = """ sum of processed files: 0
                      | Num of processed measurements: 0
                      | Num of failed measurements: 0
@@ -20,13 +21,8 @@ class ReportGeneratorSpec {
   @Test
   def testReportFormatWithData() = {
 
-    val collector = new SensoryDataCollector
-    collector.incrementFileProcessingCount
-    collector.addSensorData("s1", HumidityValid(20))
-    collector.addSensorData("s1", HumidityValid(30))
-    collector.addSensorData("s1", HumidityValid(40))
-    collector.addSensorData("s1",HumidityInvalid)
-    val generator = new ReportGenerator(collector)
+    val metrics = SensorDataMetrics("s1", 20, 40, 90, 3, 1)
+    val generator = new ReportGenerator(1, List(metrics) )
     val expected = """ sum of processed files: 1
                      | Num of processed measurements: 4
                      | Num of failed measurements: 1

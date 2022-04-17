@@ -1,23 +1,21 @@
-import java.io.File
-import java.nio.file.Paths
-import java.util.concurrent.TimeUnit
-
 import akka.actor.ActorSystem
 import akka.stream.scaladsl.{FileIO, Source}
 import akka.testkit.TestKit
 import akka.util.ByteString
 import org.junit.Assert.{assertEquals, assertTrue}
-import org.junit.{Assert, Test}
+import org.junit.Test
 
+import java.io.File
+import java.nio.file.Paths
+import java.util.concurrent.TimeUnit
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
-import scala.util.{Random, Success, Try}
+import scala.util.Random
 
 class IntegrationSpec extends TestKit(ActorSystem("IntegrationSpec")){
 
     @Test
     def testBigFile = {
-
       val filePath: String = createTestFile
       val csvDataFile = new File(filePath)
       assertTrue(csvDataFile.exists())
@@ -29,10 +27,10 @@ class IntegrationSpec extends TestKit(ActorSystem("IntegrationSpec")){
       val ioResult = Await.result(dataWroteFuture, Duration(5, TimeUnit.MINUTES))
       assertTrue(ioResult.status.isSuccess)
 
-      val collectorFut  = SensorDataProcess.dataCollectorGraph(new SensoryDataCollector, new File(".")).run
+      val collectorFut  = SensorDataProcess.dataCollectorGraph(new File(".")).run
 
       val collector = Await.result(collectorFut, Duration(1, TimeUnit.MINUTES))
-      assertEquals(1, collector.totalFiles)
+      assertEquals(1, collector.getTotalFileCount)
       assertTrue(csvDataFile.delete())
     }
 

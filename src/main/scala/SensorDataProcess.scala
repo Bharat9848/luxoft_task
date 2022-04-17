@@ -1,11 +1,11 @@
-import java.io.File
-import java.nio.file.{Path, Paths}
-
-import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.stream.scaladsl.{FileIO, Flow, Framing, Keep, Sink, Source}
 import akka.util.ByteString
+import domain.{GroupData, HumidityMeasurement, SensorHumiditySample, SensoryDataCollector}
+import report.ReportGenerator
 
+import java.io.File
+import java.nio.file.{Files, OpenOption, Path, Paths, StandardOpenOption}
 import scala.io.StdIn.readLine
 
 object SensorDataProcess extends App {
@@ -13,43 +13,51 @@ object SensorDataProcess extends App {
   println("Enter sensor data directory")
   val dataDirectory = readLine()
   val directory = Paths.get(dataDirectory).toFile
-  val sensoryDataCollector = new SensoryDataCollector
 
-  def fileToFileData(file:Path, sensoryDataCollector: SensoryDataCollector):Source[List[String], _] = {
-    sensoryDataCollector.incrementFileProcessingCount
-    FileIO.fromPath(file)
-    .via(Framing.delimiter(ByteString("\n"), 256, true)
-      .map(_.utf8String))
-    .map(List(_))
-    .drop(1)
-  }
-
-  def directoryToFileData(directory: File, collector: SensoryDataCollector):Source[String, NotUsed] = {
+  def directoryToFileData(directory: File) = {
     val fileIterator = directory.listFiles(pathname => pathname.getName.endsWith(".csv")).toList.iterator
+    def fileToFileData(file:Path):Source[(String,String), _] = {
+      FileIO.fromPath(file)
+        .via(Framing.delimiter(ByteString("\n"), 256, true)
+          .map(_.utf8String))
+        .zip(Source.repeat[String](file.toFile.getName))
+        .drop(1)
+    }
 
     Source.fromIterator[File](() => fileIterator)
-      .flatMapConcat(file => fileToFileData(file.toPath, collector)).mapConcat(x => x)
+      .flatMapConcat(file => fileToFileData(file.toPath))
   }
 
-  def rawDataToHumidityData :Flow[String, (String, Humidity),_] = Flow[String].map(line => {
-    val entry = line.split(",")
-    (entry(0), Humidity.from(entry(1)))
-  })
+  def rawDataToHumidityData :Flow[(String, String),GroupData,_] =
+    Flow[(String, String)]
+      .map(sampleToFileName => {
+        val (sample, fileName) = sampleToFileName
+        (fileName, SensorHumiditySample.fromSampleString(sample))
+      })
+      .filter(_._2.isDefined)
+      .map(fileNameToSample => GroupData(fileNameToSample._1, fileNameToSample._2.get))
 
-  def viaHumidityDataCollector(sensoryDataCollector: SensoryDataCollector) = Sink.fold[SensoryDataCollector, (String, Humidity)](sensoryDataCollector)(
+  def viaHumidityDataCollector = Sink.fold[SensoryDataCollector, GroupData](new SensoryDataCollector)(
     (collector, data) => {
-      collector.addSensorData(data._1, data._2)
+      collector.addSensorData(data)
       collector
     })
 
-  def dataCollectorGraph(collector: SensoryDataCollector, directory1: File) = directoryToFileData(directory1, collector)
+  def dataCollectorGraph(dir: File) = directoryToFileData(dir)
     .via(rawDataToHumidityData)
-    .toMat(viaHumidityDataCollector(collector))(Keep.right)
+    .toMat(viaHumidityDataCollector)(Keep.right)
 
-  val dataCollector = dataCollectorGraph(sensoryDataCollector, directory).run()
+  val dataCollector = dataCollectorGraph(directory).run()
 
   dataCollector.foreach(collector => {
-    val generator = new ReportGenerator(collector)
+    val sensorDataMetrics = collector.getAllMeasurements.values.toList.sortBy(metrics =>{
+      if(metrics.totalData == 0){
+        Integer.MAX_VALUE;
+      }else {
+        metrics.totalData/metrics.validDataCount
+      }
+    })
+    val generator = new ReportGenerator(collector.getTotalFileCount, sensorDataMetrics)
     println(generator.generateReport)
     system.terminate()
   })(system.getDispatcher)
