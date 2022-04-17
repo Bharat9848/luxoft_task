@@ -1,10 +1,10 @@
 ## Program Structure
-Program is using Akka-Stream scala library to solve the problem. To solve the problem it breaks the problem statement in following stages
-1. Filter csv files from input directory: This stage create File source stream after filtering only csv file from input directory.
-2. Read file raw data: This stage takes input from above file stream and convert file data bytes to raw data string.
-3. Parse raw data: This stage parses the raw data from above stage and parses raw string to ```(sensor, Humidity)``` tuple.
-4. Collect and group humidity data: This stage takes humidity data input from above stage. And it furthers group and collect the data in ```SensoryDataCollector```.
-5. Print report: This is the final stage. It processes the collector from above stage and prints the output 
+This program uses Akka-Stream scala library to solve the problem. It breaks the problem in following stages
+1. Filter csv files from input directory: This stage create File source stream after filtering only csv files from input directory. Then it converts file data bytes to raw data strings per line along with leader information.
+2. Parse raw data: This stage parses the raw data from above stage and parses raw string to ```(leader, (sensor, domain.HumidityMeasurement))``` tuple.
+3. Collect and group humidity data: This stage takes humidity data input from above stage. And it furthers group and collect the data in ```domain.SensoryDataCollector```. 
+4. We create a linear graph with three stages defined in above three steps. We run the graph which return collector.
+5. Print report: This is the final stage. It processes the collector data and sort it and then prints the output. 
 
 ## How to run program
 
@@ -31,19 +31,20 @@ Enter sensor data directory
 Directory structure is according to sbt project convention. Following list the source files and small overview about them 
 
  - src/main/scala
-1. **Humidity.scala**  -  Case classes to represent Humidity data
-2. **ReportGenerator.scala** - Generates report
+1. **domain.HumidityMeasurement.scala**  -  Case classes to represent domain.Humidity data
+2. **report.ReportGenerator.scala** - Generates report
 3. **SensorDataProcess.scala** - Main program takes input and triggers the Akka stream pipeline
-4. **SensorData.scala** - case class representing sensor state
-5. **SensoryDataCollector.scala** - Data structure wrapper class to collect sensor data
-- src/test/integration 
-1. **IntegrationSpec.scala** - It test the program against a big input file.
+4. **domain.SensorDataMetrics.scala** - case class to collect metrics for a sensor.
+5. **domain.SensorHumiditySample.scala** - case class to represent single sensor humidity sample.
+6. **domain.SensoryDataCollector.scala** - Keep all the sensors data
+- src/test/integration
+1. **IntegrationSpec.scala** - It tests the program against a big input file.
 - src/test/resources/leaderData  
 1. **leader1.csv** - Test data
 2. **leader2.csv** - Test data
 3. **leader3.txt** - Test data to ignore
 - src/test/scala                 
-1. **ReportGeneratorSpec.scala** - Unit test file for ReportGenerator
-2. **SensoryDataCollectorSpec.scala** - Unit test file for SensoryDataCollector
+1. **ReportGeneratorSpec.scala** - Unit test file for report.ReportGenerator
+2. **SensoryDataCollectorSpec.scala** - Unit test file for domain.SensoryDataCollector
 3. **SensoryDataProcessSpec.scala** - Unit test file for SensoryDataProcess 
 
